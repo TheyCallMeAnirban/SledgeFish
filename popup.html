@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>SledgeFish Lite</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup-container">
+    <header class="popup-header">
+      <div class="logo-group">
+        <span class="sf-icon">SF</span>
+        <div>
+          <h1 class="popup-title">SledgeFish Lite</h1>
+          <p class="popup-version">v0.1.0 · Chess Commentator</p>
+        </div>
+      </div>
+      <div class="status-indicator-box">
+        <span class="status-dot" id="popup-status-dot"></span>
+        <span class="status-text" id="popup-status-text">Active</span>
+      </div>
+    </header>
+
+    <main class="popup-main">
+      <div class="setting-row">
+        <div class="setting-label-group">
+          <label for="toggle-enabled" class="setting-label">Commentary</label>
+          <span class="setting-desc">Enable real-time reactions on Chess.com</span>
+        </div>
+        <label class="switch">
+          <input type="checkbox" id="toggle-enabled" checked>
+          <span class="slider"></span>
+        </label>
+      </div>
+
+      <div class="setting-row vertical">
+        <div class="setting-label-group">
+          <label for="select-personality" class="setting-label">Commentator Personality</label>
+          <span class="setting-desc">Select commentary tone and style</span>
+        </div>
+        <select id="select-personality" class="personality-select">
+          <option value="unhinged">🔥 Unhinged (Chaotic & Exaggerated)</option>
+          <option value="sarcastic">😏 Sarcastic (Dry Wit & Roasts)</option>
+          <option value="professional">🎙️ Professional (Calm & Sports-style)</option>
+          <option value="supportive">🌱 Supportive (Encouraging & Constructive)</option>
+        </select>
+      </div>
+
+      <div class="preview-box" id="preview-box">
+        <div class="preview-header">
+          <span class="preview-tag" id="preview-tag">PREVIEW</span>
+          <button type="button" class="btn-test" id="btn-test-reaction">Random Line ↻</button>
+        </div>
+        <p class="preview-quote" id="preview-quote">"AND THE PIECE IS GONE! Somebody call the insurance company."</p>
+      </div>
+    </main>
+
+    <footer class="popup-footer">
+      <span>Works on Chess.com live & analysis</span>
+    </footer>
+  </div>
+
+  <script src="commentaryEngine.js"></script>
+  <script src="popup.js"></script>
+</body>
+</html>

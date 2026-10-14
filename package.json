@@ -1,0 +1,17 @@
+{
+  "name": "sledgefish-lite",
+  "version": "0.1.0",
+  "description": "Lightweight personality-driven chess commentator for Chess.com",
+  "main": "content.js",
+  "scripts": {
+    "test": "node --test tests/moveTracker.test.js tests/eventClassifier.test.js tests/commentaryEngine.test.js"
+  },
+  "keywords": [
+    "chess",
+    "chess.com",
+    "chrome-extension",
+    "commentary"
+  ],
+  "author": "",
+  "license": "MIT"
+}
