@@ -35,6 +35,44 @@
   overlay.setPersonality(currentPersonality);
   overlay.setStatus('Initializing...', false);
 
+  // Instantiate SpeechController
+  let speechController = null;
+  if (window.SledgeFishSpeech && window.SledgeFishSpeech.SpeechController) {
+    try {
+      speechController = new window.SledgeFishSpeech.SpeechController({
+        autoSpeak: false, // Default false until manual test is verified
+        speechServerUrl: 'http://127.0.0.1:8000/api/tts',
+        referenceId: 'b3e2e78dfa3f4100a7b9be30175b06a7'
+      });
+      console.log('[SledgeFish] SpeechController initialized.');
+    } catch (speechErr) {
+      console.warn('[SledgeFish] SpeechController init failed:', speechErr);
+    }
+  }
+
+  // Voice test button handler in overlay
+  overlay.onTestVoiceRequested = () => {
+    if (speechController) {
+      overlay.setStatus('Testing Fish Audio voice...', false);
+      const testSample = 'धोनी वाला हेलीकॉप्टर शॉट! क्या कमाल की चाल चली है!';
+      speechController.enqueue(testSample, {
+        isManualTest: true,
+        onStart: () => {
+          overlay.setStatus('Speaking sample...', false);
+        },
+        onEnd: () => {
+          overlay.setStatus('Active', false);
+        },
+        onError: (err) => {
+          console.warn('[SledgeFish] Speech sample error:', err);
+          overlay.setStatus('Voice error: ' + (err.message || 'Check server'), true);
+        }
+      });
+    } else {
+      overlay.setStatus('SpeechController not available', true);
+    }
+  };
+
   // Allow user to click the "SF" logo to trigger a quick test reaction
   overlay.onTestRequested = () => {
     const sampleEvents = [
@@ -46,6 +84,9 @@
     const rand = sampleEvents[Math.floor(Math.random() * sampleEvents.length)];
     const reaction = commentaryEngine.generate(rand, currentPersonality);
     overlay.showReaction(reaction);
+    if (speechController && speechController.autoSpeak && reaction.text) {
+      speechController.enqueue(reaction.text);
+    }
   };
 
   // Sync settings with storage
@@ -82,16 +123,156 @@
     });
   }
 
+  // PositionManager instance for real-time move validation and snapshot generation
+  let positionManager = null;
+  if (window.SledgeFishPositionManager && window.SledgeFishPositionManager.PositionManager) {
+    try {
+      positionManager = new window.SledgeFishPositionManager.PositionManager();
+    } catch (e) {
+      console.warn('[SledgeFish] PositionManager init failed:', e);
+    }
+  }
+
+  // MoveClassifier & TacticalInterpreter references
+  const MoveClassifier = window.SledgeFishMoveClassifier;
+  const TacticalInterpreter = window.SledgeFishTacticalInterpreter;
+
+  // Stockfish Adapter instance for bot matches & post-game analysis
+  // Engine analysis is only enabled on permitted pages (/play/computer/*, /analysis/*) and NEVER during live human-vs-human matches (/game/live/*)
+  const isEnginePermittedPage = window.location.pathname.includes('/play/computer') ||
+                                window.location.pathname.includes('/analysis') ||
+                                window.location.pathname.includes('/practice');
+
+  let stockfishAdapter = null;
+  if (isEnginePermittedPage && window.SledgeFishStockfishAdapter) {
+    try {
+      let workerUrl = 'engine/stockfish.worker.js';
+      if (typeof chrome !== 'undefined' && chrome.runtime?.getURL) {
+        const scriptUrl = chrome.runtime.getURL('engine/stockfish.worker.js');
+        const wasmUrl = chrome.runtime.getURL('engine/stockfish.wasm');
+        workerUrl = `${scriptUrl}#${encodeURIComponent(wasmUrl)}`;
+      }
+      stockfishAdapter = new window.SledgeFishStockfishAdapter({ workerUrl: workerUrl });
+      stockfishAdapter.init().then(() => {
+        console.log('[SledgeFish] Stockfish engine initialized for bot/analysis session.');
+      }).catch(err => {
+        console.warn('[SledgeFish] Stockfish init deferred/failed:', err);
+      });
+    } catch (e) {
+      console.warn('[SledgeFish] Could not create StockfishAdapter:', e);
+    }
+  }
+
+  // Cache last position evaluation to calculate move quality
+  let lastEvalScore = null;
+
   // Move Tracker instance
   const moveTracker = new MoveTracker({
-    onNewMove: (move) => {
+    onNewMove: async (move) => {
       if (!isEnabled) return;
 
       const event = EventClassifier.classify(move);
-      const reaction = commentaryEngine.generate(event, currentPersonality);
-      overlay.showReaction(reaction);
+      let snapshot = null;
+
+      // Update position manager
+      if (positionManager) {
+        try {
+          snapshot = positionManager.playMove(move.san);
+        } catch (err) {
+          try {
+            positionManager.reset();
+            const allMoves = moveTracker.lastMoves || [];
+            for (let i = 0; i < allMoves.length; i++) {
+              snapshot = positionManager.playMove(allMoves[i].san);
+            }
+          } catch (resyncErr) {
+            console.warn('[SledgeFish] PositionManager resync failed:', resyncErr);
+          }
+        }
+      }
+
+      // Initial reaction with snapshot metadata (piece, square) immediately
+      let initialFinding = {
+        ...event,
+        snapshot: snapshot,
+        quality: 'UNCLASSIFIED',
+        san: move.san,
+        ply: move.ply,
+        color: move.color
+      };
+
+      // Always display immediate reaction for responsiveness
+      const initialReaction = commentaryEngine.generate(initialFinding, currentPersonality);
+      overlay.showReaction(initialReaction);
+
+      // If engine is permitted and active, evaluate move quality dynamically
+      if (stockfishAdapter && snapshot && snapshot.fenAfter) {
+        try {
+          // If we do not have an evaluation for fenBefore yet, get it first
+          let evalBefore = lastEvalScore;
+          if (!evalBefore && snapshot.fenBefore) {
+            const beforeResult = await stockfishAdapter.analyze(snapshot.fenBefore, { depth: 6, movetime: 120 });
+            evalBefore = beforeResult.scoreWhite;
+          }
+
+          // Analyze position after the move
+          const evalResult = await stockfishAdapter.analyze(snapshot.fenAfter, { depth: 6, movetime: 120 });
+          const currentEval = evalResult.scoreWhite;
+
+          if (MoveClassifier && evalBefore && currentEval) {
+            const qualityResult = MoveClassifier.classifyMoveQuality({
+              scoreBefore: evalBefore,
+              scoreAfter: currentEval,
+              moverColor: move.color,
+              playedSan: move.san,
+              playedLan: snapshot.lan,
+              bestmoveUci: evalResult.bestmoveUci,
+              bestmoveSan: evalResult.bestmoveSan,
+              snapshot: snapshot
+            });
+
+            // Extract tactical motifs (hanging piece, royal fork, missed mate, free capture)
+            let tacticalFinding = null;
+            if (TacticalInterpreter && TacticalInterpreter.interpretTactics) {
+              tacticalFinding = TacticalInterpreter.interpretTactics({
+                snapshot: snapshot,
+                quality: qualityResult.quality
+              });
+            }
+
+            // Update overlay with evaluated move quality and tactical motif
+            if (qualityResult.quality && qualityResult.quality !== 'UNCLASSIFIED') {
+              const qualityFinding = {
+                ...event,
+                ...qualityResult,
+                tactics: tacticalFinding,
+                snapshot: snapshot,
+                san: move.san,
+                ply: move.ply,
+                color: move.color
+              };
+              const qualityReaction = commentaryEngine.generate(qualityFinding, currentPersonality);
+              overlay.showReaction(qualityReaction);
+              if (speechController && speechController.autoSpeak && qualityReaction.text) {
+                speechController.enqueue(qualityReaction.text);
+              }
+            }
+          }
+
+          lastEvalScore = currentEval;
+        } catch (engineErr) {
+          console.warn('[SledgeFish] Engine move evaluation error:', engineErr);
+        }
+      } else {
+        // If not using Stockfish evaluation (e.g. live game or engine disabled), speak initial reaction if autoSpeak is true
+        if (speechController && speechController.autoSpeak && initialReaction.text) {
+          speechController.enqueue(initialReaction.text);
+        }
+      }
     },
     onReset: () => {
+      if (positionManager) positionManager.reset();
+      lastEvalScore = null;
       overlay.setStatus('New game detected', false);
     }
   });
@@ -169,6 +350,16 @@
       // Initial silent sync: do not replay existing historical moves
       const initialMoves = extractMoves(activeContainer);
       moveTracker.sync(initialMoves, { isInitialLoad: true });
+      if (positionManager && initialMoves.length > 0) {
+        try {
+          positionManager.reset();
+          for (let i = 0; i < initialMoves.length; i++) {
+            positionManager.playMove(initialMoves[i].san);
+          }
+        } catch (e) {
+          console.warn('[SledgeFish] Initial positionManager sync failed:', e);
+        }
+      }
       overlay.setInitialState(initialMoves);
 
       moveContainerObserver = new MutationObserver(handleMutation);

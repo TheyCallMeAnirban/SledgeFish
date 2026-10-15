@@ -4,7 +4,8 @@
   "description": "Lightweight personality-driven chess commentator for Chess.com",
   "main": "content.js",
   "scripts": {
-    "test": "node --test tests/moveTracker.test.js tests/eventClassifier.test.js tests/commentaryEngine.test.js"
+    "test": "node --test tests/moveTracker.test.js tests/eventClassifier.test.js tests/commentaryEngine.test.js tests/positionManager.test.js tests/scoreNormalizer.test.js tests/stockfishAdapter.test.js tests/stockfishIntegration.test.js tests/moveClassifier.test.js tests/contextCommentary.test.js",
+    "bundle:chess": "node scripts/bundle_chess.js"
   },
   "keywords": [
     "chess",
@@ -13,5 +14,9 @@
     "commentary"
   ],
   "author": "",
-  "license": "MIT"
+  "license": "MIT",
+  "dependencies": {
+    "chess.js": "^1.4.0",
+    "stockfish": "^19.0.1"
+  }
 }

@@ -156,10 +156,52 @@
   border: 1px solid rgba(129, 182, 76, 0.35);
 }
 
-.sf-event-badge.sf-ev-CHECKMATE {
-  background: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+.sf-event-badge.sf-ev-CHECKMATE,
+.sf-event-badge.sf-ev-BLUNDER,
+.sf-event-badge.sf-ev-HANGING_PIECE,
+.sf-event-badge.sf-ev-MISSED_MATE {
+  background: rgba(239, 68, 68, 0.28);
+  color: #f87171;
   border-color: #ef4444;
+}
+
+.sf-event-badge.sf-ev-MISTAKE {
+  background: rgba(249, 115, 22, 0.25);
+  color: #fb923c;
+  border-color: #f97316;
+}
+
+.sf-event-badge.sf-ev-FORK,
+.sf-event-badge.sf-ev-INACCURACY {
+  background: rgba(234, 179, 8, 0.22);
+  color: #facc15;
+  border-color: #eab308;
+}
+
+.sf-event-badge.sf-ev-BRILLIANT {
+  background: rgba(6, 182, 212, 0.25);
+  color: #22d3ee;
+  border-color: #06b6d4;
+  box-shadow: 0 0 10px rgba(6, 182, 212, 0.3);
+}
+
+.sf-event-badge.sf-ev-EXCELLENT,
+.sf-event-badge.sf-ev-BEST_MOVE {
+  background: rgba(34, 197, 94, 0.25);
+  color: #4ade80;
+  border-color: #22c55e;
+}
+
+.sf-event-badge.sf-ev-GOOD {
+  background: rgba(59, 130, 246, 0.22);
+  color: #60a5fa;
+  border-color: #3b82f6;
+}
+
+.sf-event-badge.sf-ev-BOOK {
+  background: rgba(168, 85, 247, 0.22);
+  color: #c084fc;
+  border-color: #a855f7;
 }
 
 .sf-event-badge.sf-ev-CHECK {

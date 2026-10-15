@@ -12,6 +12,14 @@
         "https://www.chess.com/*"
       ],
       "js": [
+        "lib/chess.min.js",
+        "positionManager.js",
+        "scoreNormalizer.js",
+        "engine/uciParser.js",
+        "engine/stockfishAdapter.js",
+        "moveClassifier.js",
+        "tacticalInterpreter.js",
+        "speechController.js",
         "moveTracker.js",
         "eventClassifier.js",
         "commentaryEngine.js",
@@ -37,5 +45,17 @@
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
-  }
+  },
+  "web_accessible_resources": [
+    {
+      "resources": [
+        "engine/stockfish.worker.js",
+        "engine/stockfish.wasm",
+        "lib/chess.min.js"
+      ],
+      "matches": [
+        "https://www.chess.com/*"
+      ]
+    }
+  ]
 }

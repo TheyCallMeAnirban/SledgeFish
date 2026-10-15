@@ -70,6 +70,18 @@
       const controls = document.createElement('div');
       controls.className = 'sf-controls';
 
+      const voiceBtn = document.createElement('button');
+      voiceBtn.className = 'sf-btn sf-voice-btn';
+      voiceBtn.id = 'sf-voice-test-btn';
+      voiceBtn.title = 'Test Voice / Speech (Fish Audio)';
+      voiceBtn.innerHTML = '🔊';
+      voiceBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (typeof this.onTestVoiceRequested === 'function') {
+          this.onTestVoiceRequested();
+        }
+      });
+
       const minBtn = document.createElement('button');
       minBtn.className = 'sf-btn';
       minBtn.id = 'sf-min-btn';
@@ -90,6 +102,7 @@
         this.hide();
       });
 
+      controls.appendChild(voiceBtn);
       controls.appendChild(minBtn);
       controls.appendChild(closeBtn);
 
@@ -248,8 +261,12 @@
       }
 
       if (eventBadge) {
-        eventBadge.className = `sf-event-badge sf-ev-${data.event || 'MOVE'}`;
-        eventBadge.textContent = data.event || 'MOVE';
+        let badgeLabel = (data.quality && data.quality !== 'UNCLASSIFIED') ? data.quality : (data.event || 'MOVE');
+        if (data.contextKey && (data.contextKey === 'HANGING_PIECE' || data.contextKey === 'FORK' || data.contextKey === 'MISSED_MATE')) {
+          badgeLabel = data.contextKey;
+        }
+        eventBadge.className = `sf-event-badge sf-ev-${badgeLabel}`;
+        eventBadge.textContent = badgeLabel.replace('_', ' ');
       }
 
       if (moveInfo && data.san) {
